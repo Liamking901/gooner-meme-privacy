@@ -1,0 +1,180 @@
+# Gooner Linux Plymouth Boot Animation Script
+# Rotating meme images with privacy-focused messages
+
+# Screen setup
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+
+# Load meme images for rotation
+meme_images = [];
+meme_sprites = [];
+
+for (i = 0; i < 4; i++) {
+    meme_images[i] = Image("meme" + i + ".png");
+    meme_sprites[i] = Sprite(meme_images[i]);
+    meme_sprites[i].SetPosition(
+        screen_width / 2 - meme_images[i].GetWidth() / 2,
+        screen_height / 2 - meme_images[i].GetHeight() / 2 - 50,
+        1
+    );
+    meme_sprites[i].SetOpacity(0);
+}
+
+# Gooner Linux logo/text
+logo_image = Image.Text("GOONER LINUX", 1, 1, 1, 1, "Sans Bold 24");
+logo_sprite = Sprite(logo_image);
+logo_sprite.SetPosition(
+    screen_width / 2 - logo_image.GetWidth() / 2,
+    screen_height / 2 + 100,
+    2
+);
+
+# Privacy messages
+privacy_messages = [
+    "Initializing Tor network...",
+    "Randomizing MAC address...", 
+    "Loading privacy tools...",
+    "Setting up firewall...",
+    "Preparing meme arsenal...",
+    "Almost ready to boot like a chad...",
+    "Welcome to maximum privacy!"
+];
+
+message_sprite = Sprite();
+message_sprite.SetPosition(
+    screen_width / 2,
+    screen_height / 2 + 150,
+    3
+);
+
+# Progress bar setup
+progress_bar_width = 300;
+progress_bar_height = 20;
+progress_bar_x = screen_width / 2 - progress_bar_width / 2;
+progress_bar_y = screen_height / 2 + 200;
+
+# Progress bar background
+progress_bg_image = Image();
+progress_bg_image.SetColor(0.2, 0.2, 0.2);
+progress_bg_image = progress_bg_image.Scale(progress_bar_width, progress_bar_height);
+progress_bg_sprite = Sprite(progress_bg_image);
+progress_bg_sprite.SetPosition(progress_bar_x, progress_bar_y, 4);
+
+# Progress bar foreground (green like matrix)
+progress_fg_image = Image();
+progress_fg_image.SetColor(0, 1, 0); # Matrix green
+progress_fg_sprite = Sprite();
+progress_fg_sprite.SetPosition(progress_bar_x, progress_bar_y, 5);
+
+# Animation variables
+progress = 0;
+tick = 0;
+message_index = 0;
+
+# Animation function called regularly
+fun refresh_callback() {
+    tick++;
+    
+    # Rotate meme images every 30 ticks
+    if (tick % 30 == 0) {
+        # Hide current meme
+        for (i = 0; i < 4; i++) {
+            meme_sprites[i].SetOpacity(0);
+        }
+        
+        # Show next meme
+        current_meme = (tick / 30) % 4;
+        meme_sprites[current_meme].SetOpacity(1);
+    }
+    
+    # Update progress bar
+    if (progress < 1.0) {
+        progress += 0.005; # Slow progress for dramatic effect
+        
+        # Update progress bar width
+        current_width = progress_bar_width * progress;
+        progress_fg_image = progress_fg_image.Scale(current_width, progress_bar_height);
+        progress_fg_sprite.SetImage(progress_fg_image);
+        
+        # Update message based on progress
+        new_message_index = Math.Int(progress * privacy_messages.GetLength());
+        if (new_message_index != message_index && new_message_index < privacy_messages.GetLength()) {
+            message_index = new_message_index;
+            message_image = Image.Text(privacy_messages[message_index], 0, 1, 0, 1, "Sans 12"); # Green text
+            message_sprite.SetImage(message_image);
+            message_sprite.SetX(screen_width / 2 - message_image.GetWidth() / 2);
+        }
+    }
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# Handle boot messages
+fun message_callback(text) {
+    # Don't override our custom messages during boot
+    if (progress >= 1.0) {
+        message_image = Image.Text(text, 1, 1, 1, 1, "Sans 12");
+        message_sprite.SetImage(message_image);
+        message_sprite.SetX(screen_width / 2 - message_image.GetWidth() / 2);
+    }
+}
+
+Plymouth.SetMessageFunction(message_callback);
+
+# Password prompt styling
+fun question_callback(prompt, entry) {
+    question_image = Image.Text(prompt, 1, 1, 1, 1, "Sans 12");
+    question_sprite = Sprite(question_image);
+    question_sprite.SetPosition(
+        screen_width / 2 - question_image.GetWidth() / 2,
+        screen_height / 2 + 250,
+        10
+    );
+    
+    # Style the entry box
+    entry_image = Image.Text(entry, 1, 1, 1, 1, "Sans 12");
+    entry_sprite = Sprite(entry_image);
+    entry_sprite.SetPosition(
+        screen_width / 2 - entry_image.GetWidth() / 2,
+        screen_height / 2 + 280,
+        10
+    );
+}
+
+Plymouth.SetDisplayQuestionFunction(question_callback);
+
+# Password entry styling
+fun password_callback(prompt, bullets) {
+    question_image = Image.Text(prompt, 1, 1, 1, 1, "Sans 12");
+    question_sprite = Sprite(question_image);
+    question_sprite.SetPosition(
+        screen_width / 2 - question_image.GetWidth() / 2,
+        screen_height / 2 + 250,
+        10
+    );
+    
+    # Show bullets for password
+    bullet_image = Image.Text(bullets, 1, 1, 1, 1, "Sans 12");
+    bullet_sprite = Sprite(bullet_image);
+    bullet_sprite.SetPosition(
+        screen_width / 2 - bullet_image.GetWidth() / 2,
+        screen_height / 2 + 280,
+        10
+    );
+}
+
+Plymouth.SetDisplayPasswordFunction(password_callback);
+
+# Hide splash when boot is complete
+fun quit_callback() {
+    # Fade out animation
+    for (i = 0; i < 4; i++) {
+        meme_sprites[i].SetOpacity(0);
+    }
+    logo_sprite.SetOpacity(0);
+    message_sprite.SetOpacity(0);
+    progress_bg_sprite.SetOpacity(0);
+    progress_fg_sprite.SetOpacity(0);
+}
+
+Plymouth.SetQuitFunction(quit_callback);

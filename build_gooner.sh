@@ -1,13 +1,13 @@
-#!/bin/bash
-
-# Gooner Linux ISO Builder Script
-# Privacy-focused meme OS based on Debian 12
+#d meme OS based on Debian 12
 # Author: Gooner Linux Team
 # Version: 1.0.0-chad
 
 set -e  # Exit on any error
 
-# Colors for output
+# Colors for output!/bin/bash
+
+# Gooner Linux ISO Builder Script
+# Privacy-focuse
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

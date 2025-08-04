@@ -1,13 +1,13 @@
-#d meme OS based on Debian 12
+#!/bin/bash
+
+# Gooner Linux ISO Builder Script
+# Privacy-focused meme OS based on Debian 12
 # Author: Gooner Linux Team
 # Version: 1.0.0-chad
 
 set -e  # Exit on any error
 
-# Colors for output!/bin/bash
-
-# Gooner Linux ISO Builder Script
-# Privacy-focuse
+# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -91,16 +91,33 @@ check_dependencies() {
     print_success "All dependencies satisfied!"
 }
 
+# Cleanup function for safe unmounting
+cleanup_mounts() {
+    print_status "Cleaning up mounts..."
+    
+    # Unmount in reverse order
+    for mount_point in "/dev/pts" "/dev" "/proc" "/sys"; do
+        if mountpoint -q "$WORK_DIR/chroot$mount_point" 2>/dev/null; then
+            print_status "Unmounting $WORK_DIR/chroot$mount_point"
+            sudo umount -l "$WORK_DIR/chroot$mount_point" || true
+        fi
+    done
+    
+    # Wait a moment for unmounts to complete
+    sleep 2
+}
+
 # Setup build environment
 setup_build_env() {
     print_status "Setting up build environment..."
     
     if [[ -d "$WORK_DIR" ]]; then
         print_warning "Build directory exists. Cleaning up..."
+        cleanup_mounts
         sudo rm -rf "$WORK_DIR"
     fi
     
-    mkdir -p "$WORK_DIR"/{chroot,iso/{live,boot/grub},tmp}
+    mkdir -p "$WORK_DIR"/{chroot,iso/{live,boot/grub,isolinux},tmp}
     print_success "Build environment ready!"
 }
 
@@ -120,26 +137,48 @@ bootstrap_system() {
     print_success "Base system bootstrapped!"
 }
 
-# Configure chroot environment
+# Configure chroot environment with proper mounting
 configure_chroot() {
     print_status "Configuring chroot environment..."
     
     # Copy resolv.conf for internet access
     sudo cp /etc/resolv.conf "$WORK_DIR/chroot/etc/"
     
-    # Mount necessary filesystems
+    # Create necessary device files first
+    sudo mkdir -p "$WORK_DIR/chroot/dev/pts"
+    
+    # Mount necessary filesystems with proper options
+    print_status "Mounting filesystems for chroot..."
+    
     sudo mount --bind /dev "$WORK_DIR/chroot/dev"
+    sudo mount --bind /dev/pts "$WORK_DIR/chroot/dev/pts"
     sudo mount --bind /proc "$WORK_DIR/chroot/proc"
     sudo mount --bind /sys "$WORK_DIR/chroot/sys"
     
+    # Verify mounts
+    if ! mountpoint -q "$WORK_DIR/chroot/dev"; then
+        print_error "Failed to mount /dev"
+        exit 1
+    fi
+    
+    if ! mountpoint -q "$WORK_DIR/chroot/proc"; then
+        print_error "Failed to mount /proc"
+        exit 1
+    fi
+    
+    if ! mountpoint -q "$WORK_DIR/chroot/sys"; then
+        print_error "Failed to mount /sys"
+        exit 1
+    fi
+    
     # Configure APT sources
     cat << EOF | sudo tee "$WORK_DIR/chroot/etc/apt/sources.list"
-deb $DEBIAN_MIRROR $DEBIAN_SUITE main contrib non-free
-deb-src $DEBIAN_MIRROR $DEBIAN_SUITE main contrib non-free
-deb $DEBIAN_MIRROR $DEBIAN_SUITE-security main contrib non-free
-deb-src $DEBIAN_MIRROR $DEBIAN_SUITE-security main contrib non-free
-deb $DEBIAN_MIRROR $DEBIAN_SUITE-updates main contrib non-free
-deb-src $DEBIAN_MIRROR $DEBIAN_SUITE-updates main contrib non-free
+deb $DEBIAN_MIRROR $DEBIAN_SUITE main contrib non-free non-free-firmware
+deb-src $DEBIAN_MIRROR $DEBIAN_SUITE main contrib non-free non-free-firmware
+deb $DEBIAN_MIRROR $DEBIAN_SUITE-security main contrib non-free non-free-firmware
+deb-src $DEBIAN_MIRROR $DEBIAN_SUITE-security main contrib non-free non-free-firmware
+deb $DEBIAN_MIRROR $DEBIAN_SUITE-updates main contrib non-free non-free-firmware
+deb-src $DEBIAN_MIRROR $DEBIAN_SUITE-updates main contrib non-free non-free-firmware
 EOF
     
     print_success "Chroot environment configured!"
@@ -158,13 +197,14 @@ install_packages() {
         "htop" "neofetch" "tree" "unzip" "p7zip-full"
         "firefox-esr" "xfce4" "xfce4-terminal" "lightdm"
         "network-manager-gnome" "pulseaudio" "alsa-utils"
+        "dbus-x11" "ca-certificates"
     )
     
     # Privacy and security packages  
     local privacy_packages=(
         "tor" "torsocks" "proxychains4" "nyx"
         "ufw" "nftables" "macchanger" "bleachbit"
-        "secure-delete" "mat2" "metadata-cleaner"
+        "secure-delete" "mat2" 
         "openvpn" "wireguard" "resolvconf"
     )
     
@@ -184,11 +224,26 @@ install_packages() {
     
     local all_packages=("${core_packages[@]}" "${privacy_packages[@]}" "${hacker_packages[@]}" "${fun_packages[@]}")
     
+    # Install packages in chroot with proper environment
     sudo chroot "$WORK_DIR/chroot" /bin/bash -c "
         export DEBIAN_FRONTEND=noninteractive
+        export DEBCONF_NONINTERACTIVE_SEEN=true
+        export LC_ALL=C
+        export LANGUAGE=C
+        export LANG=C
+        
+        # Update package lists
         apt update
-        apt install -y ${all_packages[*]}
+        
+        # Install packages in batches to avoid issues
+        for pkg in ${all_packages[*]}; do
+            echo \"Installing \$pkg...\"
+            apt install -y \"\$pkg\" || echo \"Failed to install \$pkg, continuing...\"
+        done
+        
+        # Clean up
         apt clean
+        apt autoremove -y
     "
     
     print_success "Packages installed!"
@@ -241,6 +296,7 @@ configure_firewall() {
     
     # UFW configuration
     sudo chroot "$WORK_DIR/chroot" /bin/bash -c "
+        export DEBIAN_FRONTEND=noninteractive
         ufw --force reset
         ufw default deny incoming
         ufw default deny outgoing
@@ -264,6 +320,7 @@ setup_user() {
         useradd -m -s /bin/bash -G sudo,audio,video,plugdev,netdev gooner
         echo 'gooner:gooner' | chpasswd
         echo 'gooner ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/gooner
+        chmod 440 /etc/sudoers.d/gooner
     "
     
     print_success "User account created!"
@@ -327,6 +384,9 @@ EOF
     sudo chmod +x "$WORK_DIR/chroot/usr/local/bin/gooner-joke"
     sudo chmod +x "$WORK_DIR/chroot/home/gooner/run_shrek.sh"
     
+    # Fix ownership
+    sudo chroot "$WORK_DIR/chroot" chown -R gooner:gooner /home/gooner
+    
     # Custom sudo prompt
     echo 'Defaults passprompt="Hey bruv, you sure about that? [sudo] password for %p: "' | sudo tee -a "$WORK_DIR/chroot/etc/sudoers"
     
@@ -337,9 +397,9 @@ EOF
 configure_desktop() {
     print_status "Configuring XFCE desktop..."
     
-    # Create desktop configuration
-    sudo mkdir -p "$WORK_DIR/chroot/etc/skel/.config/xfce4"
-    sudo mkdir -p "$WORK_DIR/chroot/home/gooner/.config/xfce4"
+    # Create desktop configuration directories
+    sudo mkdir -p "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml"
+    sudo mkdir -p "$WORK_DIR/chroot/home/gooner/.config/xfce4/xfconf/xfce-perchannel-xml"
     
     # Set dark theme and custom wallpaper
     cat << 'EOF' | sudo tee "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml"
@@ -361,7 +421,12 @@ EOF
 autologin-user=gooner
 autologin-user-timeout=0
 user-session=xfce
+greeter-session=lightdm-gtk-greeter
 EOF
+    
+    # Copy desktop config to user home
+    sudo cp -r "$WORK_DIR/chroot/etc/skel/.config" "$WORK_DIR/chroot/home/gooner/"
+    sudo chroot "$WORK_DIR/chroot" chown -R gooner:gooner /home/gooner/.config
     
     print_success "Desktop configured!"
 }
@@ -370,7 +435,10 @@ EOF
 configure_plymouth() {
     print_status "Setting up meme boot splash..."
     
-    sudo chroot "$WORK_DIR/chroot" apt install -y plymouth plymouth-themes
+    sudo chroot "$WORK_DIR/chroot" /bin/bash -c "
+        export DEBIAN_FRONTEND=noninteractive
+        apt install -y plymouth plymouth-themes
+    "
     
     # Create custom plymouth theme
     sudo mkdir -p "$WORK_DIR/chroot/usr/share/plymouth/themes/gooner"
@@ -397,19 +465,13 @@ fun message_callback (text) {
 }
 Plymouth.SetMessageFunction(message_callback);
 
-# Gooner Linux logo animation
-for (i = 0; i < 4; i++) {
-    meme_image[i] = Image("meme" + i + ".png");
-    meme_sprite[i] = Sprite(meme_image[i]);
-    meme_sprite[i].SetPosition(Window.GetX() + Window.GetWidth() / 2 - meme_image[i].GetWidth() / 2, 
-                               Window.GetY() + Window.GetHeight() / 2 - meme_image[i].GetHeight() / 2, i);
-}
-
+# Simple text animation
 progress = 0;
 fun refresh_callback () {
     progress++;
-    meme_sprite[progress % 4].SetOpacity(1);
-    meme_sprite[(progress + 3) % 4].SetOpacity(0);
+    messages = ["Booting Like a Chad...", "Loading Memes...", "Activating Privacy Mode...", "Gooner Linux Ready!"];
+    current_message = messages[progress % 4];
+    message_callback(current_message);
 }
 Plymouth.SetRefreshFunction (refresh_callback);
 EOF
@@ -421,9 +483,17 @@ EOF
 create_iso_structure() {
     print_status "Creating ISO structure..."
     
-    # Copy kernel and initrd
-    sudo cp "$WORK_DIR/chroot/boot/vmlinuz-"* "$WORK_DIR/iso/live/vmlinuz"
-    sudo cp "$WORK_DIR/chroot/boot/initrd.img-"* "$WORK_DIR/iso/live/initrd"
+    # Find and copy kernel and initrd
+    KERNEL_PATH=$(sudo find "$WORK_DIR/chroot/boot" -name "vmlinuz-*" | head -1)
+    INITRD_PATH=$(sudo find "$WORK_DIR/chroot/boot" -name "initrd.img-*" | head -1)
+    
+    if [[ -z "$KERNEL_PATH" ]] || [[ -z "$INITRD_PATH" ]]; then
+        print_error "Could not find kernel or initrd files"
+        exit 1
+    fi
+    
+    sudo cp "$KERNEL_PATH" "$WORK_DIR/iso/live/vmlinuz"
+    sudo cp "$INITRD_PATH" "$WORK_DIR/iso/live/initrd"
     
     # Create GRUB configuration
     cat << 'EOF' | sudo tee "$WORK_DIR/iso/boot/grub/grub.cfg"
@@ -467,23 +537,26 @@ EOF
     print_success "ISO structure created!"
 }
 
-# Clean up chroot
+# Clean up chroot with proper unmounting
 cleanup_chroot() {
     print_status "Cleaning up chroot environment..."
     
+    # Clean up inside chroot first
     sudo chroot "$WORK_DIR/chroot" /bin/bash -c "
         apt autoremove -y
         apt autoclean
         rm -rf /tmp/*
         rm -rf /var/tmp/*
         rm -rf /var/log/*
+        rm -rf /var/cache/apt/archives/*.deb
         history -c
-    "
+    " || true
     
-    # Unmount bind mounts
-    sudo umount "$WORK_DIR/chroot/dev" || true
-    sudo umount "$WORK_DIR/chroot/proc" || true  
-    sudo umount "$WORK_DIR/chroot/sys" || true
+    # Remove resolv.conf copy
+    sudo rm -f "$WORK_DIR/chroot/etc/resolv.conf"
+    
+    # Unmount filesystems
+    cleanup_mounts
     
     print_success "Chroot cleaned up!"
 }
@@ -512,7 +585,7 @@ generate_iso() {
     sudo cp /usr/lib/syslinux/modules/bios/libcom32.c32 "$WORK_DIR/iso/isolinux/"
     sudo cp /usr/lib/syslinux/modules/bios/libutil.c32 "$WORK_DIR/iso/isolinux/"
     
-    # Generate the ISO
+    # Generate the ISO (simplified for BIOS boot only)
     sudo xorriso -as mkisofs \
         -iso-level 3 \
         -full-iso9660-filenames \
@@ -522,12 +595,7 @@ generate_iso() {
         -no-emul-boot \
         -boot-load-size 4 \
         -boot-info-table \
-        -eltorito-alt-boot \
-        -e boot/grub/efi.img \
-        -no-emul-boot \
-        -append_partition 2 0xef "$WORK_DIR/iso/boot/grub/efi.img" \
         -output "$ISO_NAME" \
-        -graft-points \
         "$WORK_DIR/iso"
     
     print_success "ISO generated: $ISO_NAME"
@@ -544,6 +612,9 @@ calculate_checksums() {
     echo "SHA256: $(cat ${ISO_NAME}.sha256)"
     echo "MD5: $(cat ${ISO_NAME}.md5)"
 }
+
+# Trap to cleanup on exit
+trap cleanup_mounts EXIT
 
 # Main build function
 main() {

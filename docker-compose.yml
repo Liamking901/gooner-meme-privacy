@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  gooner-builder:
+    build: .
+    container_name: gooner-linux-builder
+    privileged: true
+    volumes:
+      - ./output:/workspace/output
+      - /dev:/dev
+    environment:
+      - DOCKER_BUILD=1
+    command: ["./docker-build.sh"]

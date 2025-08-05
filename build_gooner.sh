@@ -7,6 +7,12 @@
 
 set -e  # Exit on any error
 
+# Check if running in Docker
+if [[ "$DOCKER_BUILD" == "1" ]]; then
+    echo "Running in Docker container - skipping root check"
+    SKIP_ROOT_CHECK=1
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -62,7 +68,7 @@ print_meme() {
 
 # Check if running as root
 check_root() {
-    if [[ $EUID -eq 0 ]]; then
+    if [[ "$SKIP_ROOT_CHECK" != "1" ]] && [[ $EUID -eq 0 ]]; then
         print_error "Hey bruv, don't run this as root! Use sudo when needed."
         exit 1
     fi

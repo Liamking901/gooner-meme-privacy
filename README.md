@@ -72,7 +72,19 @@ git clone https://github.com/gooner-linux/gooner-linux.git
 cd gooner-linux
 ```
 
-2. **Run the build script:**
+2. **Build the ISO:**
+
+**Option A: Docker Build (Recommended - No Permission Issues)**
+```bash
+# Build using Docker Compose
+docker-compose up
+
+# Or build manually
+docker build -t gooner-builder .
+docker run --privileged -v $(pwd)/output:/workspace/output gooner-builder
+```
+
+**Option B: Native Build**
 ```bash
 chmod +x build_gooner.sh
 ./build_gooner.sh

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Goon Terminal
+Comment=Terminal with custom Goon OS branding
+Exec=xfce4-terminal -e "bash -c '/usr/local/bin/goon-ascii.sh; bash'"
+Icon=/usr/share/pixmaps/terminal.png
+Terminal=true
+Categories=System;TerminalEmulator;

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Tor Browser
+Comment=Anonymous browsing with Tor
+Exec=tor-browser
+Icon=/usr/share/pixmaps/tor-browser.png
+Terminal=false
+Categories=Network;WebBrowser;

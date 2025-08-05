@@ -408,9 +408,18 @@ EOF
     sudo cp config/scripts/goon-ascii.sh "$WORK_DIR/chroot/usr/local/bin/"
     sudo chmod +x "$WORK_DIR/chroot/usr/local/bin/goon-ascii.sh"
     
-    # Copy Keir Starmer wallpaper
+    # Copy Keir Starmer wallpaper and desktop icons
     sudo mkdir -p "$WORK_DIR/chroot/usr/share/pixmaps"
     sudo cp src/assets/keir-starmer-wallpaper.jpg "$WORK_DIR/chroot/usr/share/pixmaps/"
+    sudo cp config/icons/desktop-icons.png "$WORK_DIR/chroot/usr/share/pixmaps/"
+    
+    # Install custom desktop entries
+    sudo mkdir -p "$WORK_DIR/chroot/usr/share/applications"
+    sudo cp config/desktop/*.desktop "$WORK_DIR/chroot/usr/share/applications/"
+    
+    # Create desktop shortcuts for user
+    sudo cp config/desktop/*.desktop "$WORK_DIR/chroot/home/gooner/Desktop/"
+    sudo chmod +x "$WORK_DIR/chroot/home/gooner/Desktop/"*.desktop
     
     # Fix ownership
     sudo chroot "$WORK_DIR/chroot" chown -R gooner:gooner /home/gooner
@@ -423,27 +432,166 @@ EOF
 
 # Configure XFCE and desktop environment
 configure_desktop() {
-    print_status "Configuring XFCE desktop..."
+    print_status "Configuring XFCE desktop with custom themes..."
+    
+    # Install additional XFCE themes and icon packages
+    sudo chroot "$WORK_DIR/chroot" /bin/bash -c "
+        export DEBIAN_FRONTEND=noninteractive
+        apt install -y arc-theme numix-icon-theme papirus-icon-theme \
+            xfce4-goodies xfce4-panel-profiles xfce4-screenshooter \
+            xfce4-taskmanager xfce4-clipman-plugin
+    "
     
     # Create desktop configuration directories
     sudo mkdir -p "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml"
     sudo mkdir -p "$WORK_DIR/chroot/home/gooner/.config/xfce4/xfconf/xfce-perchannel-xml"
+    sudo mkdir -p "$WORK_DIR/chroot/etc/skel/.local/share/applications"
+    sudo mkdir -p "$WORK_DIR/chroot/home/gooner/.local/share/applications"
+    sudo mkdir -p "$WORK_DIR/chroot/home/gooner/Desktop"
     
-    # Set dark theme and custom wallpaper
+    # Configure XFCE desktop with custom wallpaper
     cat << 'EOF' | sudo tee "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml"
 <?xml version="1.0" encoding="UTF-8"?>
 <channel name="xfce4-desktop" version="1.0">
-  <property name="desktop-colors" type="array">
-    <value type="int">2</value>
-    <value type="int">2</value>
-    <value type="uint">4278190080</value>
-    <value type="uint">4278190080</value>
+  <property name="backdrop" type="empty">
+    <property name="screen0" type="empty">
+      <property name="monitor0" type="empty">
+        <property name="workspace0" type="empty">
+          <property name="color-style" type="int" value="0"/>
+          <property name="image-style" type="int" value="5"/>
+          <property name="last-image" type="string" value="/usr/share/pixmaps/keir-starmer-wallpaper.jpg"/>
+        </property>
+        <property name="workspace1" type="empty">
+          <property name="color-style" type="int" value="0"/>
+          <property name="image-style" type="int" value="5"/>
+          <property name="last-image" type="string" value="/usr/share/pixmaps/gooner-wallpaper.jpg"/>
+        </property>
+      </property>
+    </property>
   </property>
-  <property name="last-image" type="string">/usr/share/pixmaps/gooner-wallpaper.jpg</property>
 </channel>
 EOF
     
-    # Configure LightDM for auto-login
+    # Configure XFCE window manager theme
+    cat << 'EOF' | sudo tee "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfwm4" version="1.0">
+  <property name="general" type="empty">
+    <property name="theme" type="string" value="Arc-Dark"/>
+    <property name="title_font" type="string" value="Sans Bold 10"/>
+    <property name="button_layout" type="string" value="O|SHMC"/>
+    <property name="cycle_draw_frame" type="bool" value="true"/>
+    <property name="cycle_raise" type="bool" value="false"/>
+    <property name="cycle_hidden" type="bool" value="true"/>
+    <property name="cycle_minimum" type="bool" value="true"/>
+    <property name="cycle_preview" type="bool" value="true"/>
+    <property name="cycle_tabwin_mode" type="int" value="0"/>
+    <property name="cycle_apps_only" type="bool" value="false"/>
+    <property name="double_click_time" type="int" value="250"/>
+    <property name="double_click_distance" type="int" value="5"/>
+    <property name="double_click_action" type="string" value="maximize"/>
+    <property name="easy_click" type="string" value="Alt"/>
+    <property name="focus_delay" type="int" value="250"/>
+    <property name="focus_mode" type="string" value="click"/>
+    <property name="focus_new" type="bool" value="true"/>
+    <property name="raise_delay" type="int" value="250"/>
+    <property name="raise_on_click" type="bool" value="true"/>
+    <property name="raise_on_focus" type="bool" value="false"/>
+    <property name="raise_with_any_button" type="bool" value="true"/>
+    <property name="repeat_urgent_blink" type="bool" value="false"/>
+    <property name="snap_to_border" type="bool" value="true"/>
+    <property name="snap_to_windows" type="bool" value="false"/>
+    <property name="snap_width" type="int" value="10"/>
+    <property name="vblank_mode" type="string" value="auto"/>
+    <property name="wrap_resistance" type="int" value="10"/>
+    <property name="wrap_windows" type="bool" value="true"/>
+    <property name="wrap_workspaces" type="bool" value="true"/>
+    <property name="zoom_desktop" type="bool" value="true"/>
+    <property name="zoom_pointer" type="bool" value="true"/>
+  </property>
+</channel>
+EOF
+
+    # Configure XFCE panel with custom layout
+    cat << 'EOF' | sudo tee "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfce4-panel" version="1.0">
+  <property name="configver" type="int" value="2"/>
+  <property name="panels" type="array">
+    <value type="int" value="1"/>
+    <property name="panel-1" type="empty">
+      <property name="position" type="string" value="p=6;x=0;y=0"/>
+      <property name="length" type="uint" value="100"/>
+      <property name="position-locked" type="bool" value="true"/>
+      <property name="size" type="uint" value="24"/>
+      <property name="plugin-ids" type="array">
+        <value type="int" value="1"/>
+        <value type="int" value="2"/>
+        <value type="int" value="3"/>
+        <value type="int" value="4"/>
+        <value type="int" value="5"/>
+        <value type="int" value="6"/>
+        <value type="int" value="7"/>
+        <value type="int" value="8"/>
+      </property>
+    </property>
+  </property>
+  <property name="plugins" type="empty">
+    <property name="plugin-1" type="string" value="applicationsmenu"/>
+    <property name="plugin-2" type="string" value="tasklist"/>
+    <property name="plugin-3" type="string" value="separator"/>
+    <property name="plugin-4" type="string" value="systray"/>
+    <property name="plugin-5" type="string" value="power-manager-plugin"/>
+    <property name="plugin-6" type="string" value="notification-plugin"/>
+    <property name="plugin-7" type="string" value="pulseaudio"/>
+    <property name="plugin-8" type="string" value="clock"/>
+  </property>
+</channel>
+EOF
+
+    # Set dark theme for applications
+    cat << 'EOF' | sudo tee "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xsettings" version="1.0">
+  <property name="Net" type="empty">
+    <property name="ThemeName" type="string" value="Arc-Dark"/>
+    <property name="IconThemeName" type="string" value="Papirus-Dark"/>
+    <property name="DoubleClickTime" type="empty"/>
+    <property name="DoubleClickDistance" type="empty"/>
+    <property name="DndDragThreshold" type="empty"/>
+    <property name="CursorBlink" type="empty"/>
+    <property name="CursorBlinkTime" type="empty"/>
+    <property name="SoundThemeName" type="empty"/>
+    <property name="EnableEventSounds" type="empty"/>
+    <property name="EnableInputFeedbackSounds" type="empty"/>
+  </property>
+  <property name="Xft" type="empty">
+    <property name="DPI" type="empty"/>
+    <property name="Antialias" type="int" value="1"/>
+    <property name="Hinting" type="int" value="1"/>
+    <property name="HintStyle" type="string" value="hintslight"/>
+    <property name="RGBA" type="string" value="rgb"/>
+  </property>
+  <property name="Gtk" type="empty">
+    <property name="CanChangeAccels" type="empty"/>
+    <property name="ColorPalette" type="empty"/>
+    <property name="FontName" type="string" value="Sans 10"/>
+    <property name="MonospaceFontName" type="string" value="Monospace 10"/>
+    <property name="IconSizes" type="empty"/>
+    <property name="KeyThemeName" type="empty"/>
+    <property name="ToolbarStyle" type="empty"/>
+    <property name="ToolbarIconSize" type="empty"/>
+    <property name="MenuImages" type="empty"/>
+    <property name="ButtonImages" type="empty"/>
+    <property name="MenuBarAccel" type="empty"/>
+    <property name="CursorThemeName" type="empty"/>
+    <property name="CursorThemeSize" type="empty"/>
+    <property name="DecorationLayout" type="empty"/>
+  </property>
+</channel>
+EOF
+    
+    # Configure LightDM for auto-login with dark theme
     cat << 'EOF' | sudo tee "$WORK_DIR/chroot/etc/lightdm/lightdm.conf"
 [Seat:*]
 autologin-user=gooner
@@ -451,12 +599,21 @@ autologin-user-timeout=0
 user-session=xfce
 greeter-session=lightdm-gtk-greeter
 EOF
+
+    # Configure LightDM greeter with dark theme
+    cat << 'EOF' | sudo tee "$WORK_DIR/chroot/etc/lightdm/lightdm-gtk-greeter.conf"
+[greeter]
+theme-name=Arc-Dark
+icon-theme-name=Papirus-Dark
+background=/usr/share/pixmaps/keir-starmer-wallpaper.jpg
+user-background=false
+EOF
     
     # Copy desktop config to user home
     sudo cp -r "$WORK_DIR/chroot/etc/skel/.config" "$WORK_DIR/chroot/home/gooner/"
     sudo chroot "$WORK_DIR/chroot" chown -R gooner:gooner /home/gooner/.config
     
-    print_success "Desktop configured!"
+    print_success "Desktop configured with dark themes!"
 }
 
 # Configure Plymouth boot splash

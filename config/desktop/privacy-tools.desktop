@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Privacy Tools
+Comment=Security and privacy utilities
+Exec=xfce4-terminal -e "bash -c 'echo Privacy Tools Menu && echo 1. Check Tor Status && echo 2. Firewall Status && echo 3. New Identity && echo 4. Check Connections && read -p Choose option: opt && case $opt in 1) tor-status ;; 2) firewall ;; 3) new-identity ;; 4) check-connections ;; esac; bash'"
+Icon=/usr/share/pixmaps/privacy-tools.png
+Terminal=true
+Categories=System;Security;

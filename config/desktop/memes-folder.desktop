@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Memes Collection
+Comment=Dank memes and easter eggs
+Exec=thunar /home/gooner/memes
+Icon=/usr/share/pixmaps/memes-folder.png
+Terminal=false
+Categories=Utility;

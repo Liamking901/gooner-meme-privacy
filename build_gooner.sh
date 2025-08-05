@@ -341,7 +341,7 @@ install_memes() {
     sudo mkdir -p "$WORK_DIR/chroot/usr/local/bin"
     sudo mkdir -p "$WORK_DIR/chroot/home/gooner/memes"
     
-    # Gooner joke script
+    # Gooner joke script with Keir Starmer and anti-censorship memes
     cat << 'EOF' | sudo tee "$WORK_DIR/chroot/usr/local/bin/gooner-joke"
 #!/bin/bash
 jokes=(
@@ -353,6 +353,20 @@ jokes=(
     "Why did the router go to therapy? It had connection issues!"
     "What do you call a fish wearing a crown? King of the network!"
     "Why don't computers ever get cold? They have Windows!"
+    "Keir Starmer walks into a meme... and tries to regulate it!"
+    "What's Keir's favorite encryption? Whatever the establishment approves!"
+    "Why did Keir Starmer ban VPNs? Because privacy makes him uncomfortable!"
+    "What do you call censorship with extra steps? Modern democracy!"
+    "Keir Starmer's internet policy: 'You will own nothing and be happy... online!'"
+    "Why don't politicians understand encryption? Because they can't handle the truth being secure!"
+    "What's the difference between a meme and free speech? Keir Starmer is still figuring it out!"
+    "Breaking: Local man discovers Tor, government panics!"
+    "What's Keir's favorite browser? Internet Explorer... with tracking enabled!"
+    "Why did the gooner cross the road? To escape internet censorship!"
+    "What do you call a politician who understands the internet? Unemployed!"
+    "Keir Starmer's favorite movie? 1984... as an instruction manual!"
+    "What's the government's favorite protocol? HTTP... without the S!"
+    "Why do politicians hate decentralization? Because they can't control what they can't understand!"
 )
 echo "${jokes[RANDOM % ${#jokes[@]}]}"
 EOF
@@ -389,6 +403,14 @@ EOF
     # Make scripts executable
     sudo chmod +x "$WORK_DIR/chroot/usr/local/bin/gooner-joke"
     sudo chmod +x "$WORK_DIR/chroot/home/gooner/run_shrek.sh"
+    
+    # Copy and install custom Goon OS ASCII script
+    sudo cp config/scripts/goon-ascii.sh "$WORK_DIR/chroot/usr/local/bin/"
+    sudo chmod +x "$WORK_DIR/chroot/usr/local/bin/goon-ascii.sh"
+    
+    # Copy Keir Starmer wallpaper
+    sudo mkdir -p "$WORK_DIR/chroot/usr/share/pixmaps"
+    sudo cp src/assets/keir-starmer-wallpaper.jpg "$WORK_DIR/chroot/usr/share/pixmaps/"
     
     # Fix ownership
     sudo chroot "$WORK_DIR/chroot" chown -R gooner:gooner /home/gooner

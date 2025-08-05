@@ -28,7 +28,7 @@ alias new-identity='sudo systemctl reload tor'
 alias firewall='sudo ufw status'
 
 # Meme aliases
-alias chad='neofetch'
+alias chad='/usr/local/bin/goon-ascii.sh && neofetch'
 alias matrix='cmatrix'
 alias joke='gooner-joke'
 alias shrek='~/run_shrek.sh'
@@ -78,23 +78,11 @@ tor_status() {
 # Enhanced prompt with Tor status
 PS1="$(tor_status) $PS1"
 
-# ASCII art welcome message
-cat << 'EOF'
-   ▄██████▄   ▄██████▄   ▄██████▄  ███▄▄▄▄      ▄████████    ▄████████ 
-  ███    ███ ███    ███ ███    ███ ███▀▀▀██▄   ███    ███   ███    ███ 
-  ███    █▀  ███    ███ ███    ███ ███   ███   ███    █▀    ███    ███ 
- ▄███        ███    ███ ███    ███ ███   ███  ▄███▄▄▄      ▄███▄▄▄▄██▀ 
-▀▀███ ████▄  ███    ███ ███    ███ ███   ███ ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   
-  ███    ███ ███    ███ ███    ███ ███   ███   ███    █▄  ▀███████████ 
-  ███    ███ ███    ███ ███    ███ ███   ███   ███    ███   ███    ███ 
-  ████████▀   ▀██████▀   ▀██████▀   ▀█   █▀    ██████████   ███    ███ 
-                                                             ███    ███ 
-               LINUX - Privacy-focused meme OS
-EOF
+# Custom Goon OS ASCII art welcome
+/usr/local/bin/goon-ascii.sh
 
 echo
-echo "Welcome to Gooner Linux, bruv! 🐧"
-echo "Type 'chad' for system info, 'joke' for memes, or 'shrek' for easter egg"
+echo "Type 'chad' for full system info, 'joke' for spicy memes, or 'shrek' for easter egg"
 echo "Your traffic is routed through Tor by default. Type 'tor-check' to verify."
 echo
 

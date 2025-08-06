@@ -201,9 +201,9 @@ install_packages() {
         "network-manager" "wireless-tools" "wpasupplicant"
         "sudo" "curl" "wget" "git" "vim" "nano"
         "htop" "neofetch" "tree" "unzip" "p7zip-full"
-        "firefox-esr" "xfce4" "xfce4-terminal" "lightdm"
+        "firefox-esr" "xfce4" "xfce4-terminal" "lightdm" "lightdm-gtk-greeter"
         "network-manager-gnome" "pulseaudio" "alsa-utils"
-        "dbus-x11" "ca-certificates"
+        "dbus-x11" "ca-certificates" "xfce4-goodies"
     )
     
     # Privacy and security packages  
@@ -404,23 +404,40 @@ EOF
     sudo chmod +x "$WORK_DIR/chroot/usr/local/bin/gooner-joke"
     sudo chmod +x "$WORK_DIR/chroot/home/gooner/run_shrek.sh"
     
-    # Copy and install custom Goon OS ASCII script
-    sudo cp config/scripts/goon-ascii.sh "$WORK_DIR/chroot/usr/local/bin/"
-    sudo chmod +x "$WORK_DIR/chroot/usr/local/bin/goon-ascii.sh"
+    # Copy and install custom Goon OS ASCII script (check if exists first)
+    if [[ -f "config/scripts/goon-ascii.sh" ]]; then
+        sudo cp config/scripts/goon-ascii.sh "$WORK_DIR/chroot/usr/local/bin/"
+        sudo chmod +x "$WORK_DIR/chroot/usr/local/bin/goon-ascii.sh"
+    else
+        print_warning "goon-ascii.sh not found, skipping..."
+    fi
     
-    # Copy Keir Starmer wallpaper and desktop icons
+    # Copy Keir Starmer wallpaper and desktop icons (check if exists first)
     sudo mkdir -p "$WORK_DIR/chroot/usr/share/pixmaps"
-    sudo cp src/assets/keir-starmer-wallpaper.jpg "$WORK_DIR/chroot/usr/share/pixmaps/"
-    sudo cp config/icons/desktop-icons.png "$WORK_DIR/chroot/usr/share/pixmaps/"
+    if [[ -f "src/assets/keir-starmer-wallpaper.jpg" ]]; then
+        sudo cp src/assets/keir-starmer-wallpaper.jpg "$WORK_DIR/chroot/usr/share/pixmaps/"
+    else
+        print_warning "keir-starmer-wallpaper.jpg not found, using default background"
+    fi
     
-    # Install custom desktop entries
+    if [[ -f "config/icons/desktop-icons.png" ]]; then
+        sudo cp config/icons/desktop-icons.png "$WORK_DIR/chroot/usr/share/pixmaps/"
+    else
+        print_warning "desktop-icons.png not found, skipping..."
+    fi
+    
+    # Install custom desktop entries (check if directory exists first)
     sudo mkdir -p "$WORK_DIR/chroot/usr/share/applications"
-    sudo cp config/desktop/*.desktop "$WORK_DIR/chroot/usr/share/applications/"
-    
-    # Create desktop shortcuts for user - ensure Desktop directory exists first
-    sudo mkdir -p "$WORK_DIR/chroot/home/gooner/Desktop"
-    sudo cp config/desktop/*.desktop "$WORK_DIR/chroot/home/gooner/Desktop/"
-    sudo chmod +x "$WORK_DIR/chroot/home/gooner/Desktop/"*.desktop
+    if [[ -d "config/desktop" ]] && [[ $(ls config/desktop/*.desktop 2>/dev/null | wc -l) -gt 0 ]]; then
+        sudo cp config/desktop/*.desktop "$WORK_DIR/chroot/usr/share/applications/"
+        
+        # Create desktop shortcuts for user - ensure Desktop directory exists first
+        sudo mkdir -p "$WORK_DIR/chroot/home/gooner/Desktop"
+        sudo cp config/desktop/*.desktop "$WORK_DIR/chroot/home/gooner/Desktop/"
+        sudo chmod +x "$WORK_DIR/chroot/home/gooner/Desktop/"*.desktop
+    else
+        print_warning "No desktop files found in config/desktop/, skipping desktop shortcuts..."
+    fi
     
     # Fix ownership
     sudo chroot "$WORK_DIR/chroot" chown -R gooner:gooner /home/gooner
@@ -439,8 +456,8 @@ configure_desktop() {
     sudo chroot "$WORK_DIR/chroot" /bin/bash -c "
         export DEBIAN_FRONTEND=noninteractive
         apt install -y arc-theme numix-icon-theme papirus-icon-theme \
-            xfce4-goodies xfce4-panel-profiles xfce4-screenshooter \
-            xfce4-taskmanager xfce4-clipman-plugin
+            xfce4-panel-profiles xfce4-screenshooter \
+            xfce4-taskmanager xfce4-clipman-plugin || true
     "
     
     # Create desktop configuration directories
@@ -449,6 +466,7 @@ configure_desktop() {
     sudo mkdir -p "$WORK_DIR/chroot/etc/skel/.local/share/applications"
     sudo mkdir -p "$WORK_DIR/chroot/home/gooner/.local/share/applications"
     sudo mkdir -p "$WORK_DIR/chroot/home/gooner/Desktop"
+    sudo mkdir -p "$WORK_DIR/chroot/home/gooner/memes"
     
     # Configure XFCE desktop with custom wallpaper
     cat << 'EOF' | sudo tee "$WORK_DIR/chroot/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml"
@@ -460,12 +478,12 @@ configure_desktop() {
         <property name="workspace0" type="empty">
           <property name="color-style" type="int" value="0"/>
           <property name="image-style" type="int" value="5"/>
-          <property name="last-image" type="string" value="/usr/share/pixmaps/keir-starmer-wallpaper.jpg"/>
+          <property name="last-image" type="string" value="/usr/share/backgrounds/xfce/xfce-verticals.png"/>
         </property>
         <property name="workspace1" type="empty">
           <property name="color-style" type="int" value="0"/>
           <property name="image-style" type="int" value="5"/>
-          <property name="last-image" type="string" value="/usr/share/pixmaps/gooner-wallpaper.jpg"/>
+          <property name="last-image" type="string" value="/usr/share/backgrounds/xfce/xfce-verticals.png"/>
         </property>
       </property>
     </property>
@@ -606,7 +624,7 @@ EOF
 [greeter]
 theme-name=Arc-Dark
 icon-theme-name=Papirus-Dark
-background=/usr/share/pixmaps/keir-starmer-wallpaper.jpg
+background=/usr/share/backgrounds/xfce/xfce-verticals.png
 user-background=false
 EOF
     

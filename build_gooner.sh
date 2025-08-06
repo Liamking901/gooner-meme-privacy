@@ -417,7 +417,8 @@ EOF
     sudo mkdir -p "$WORK_DIR/chroot/usr/share/applications"
     sudo cp config/desktop/*.desktop "$WORK_DIR/chroot/usr/share/applications/"
     
-    # Create desktop shortcuts for user
+    # Create desktop shortcuts for user - ensure Desktop directory exists first
+    sudo mkdir -p "$WORK_DIR/chroot/home/gooner/Desktop"
     sudo cp config/desktop/*.desktop "$WORK_DIR/chroot/home/gooner/Desktop/"
     sudo chmod +x "$WORK_DIR/chroot/home/gooner/Desktop/"*.desktop
     
